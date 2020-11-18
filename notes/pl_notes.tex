@@ -121,8 +121,10 @@ You start with an underapproximation and grow the approximation until it stops g
 \section{Lattice Theory}
 \subsubsection{Define Lattice and Fixed-points}
 
-\subsubsection{Define a monotone function on a lattice}
+\subsubsection{Define a monotone function on a lattice + intuition}
 A function $f: L \to L$ is \textbf{monotone} if $\forall x,y \in L$, $x \sqsubseteq y \Rightarrow f(x) \sqsubseteq f(y)$. A monotonic function preserves partial ordering. Also can be thought of as ``increasing the input also increases output.'' Note that this is not the same thing as extensive. A function $f$ is \textbf{extensive} if $\forall x \in L, x \sqsubseteq f(x)$.
+
+We can think of a monotone function as a function where more precise input cannot lead to less precise output.
 
 \subsection{Equations and Fixed-Points}
 \subsubsection{What is the fixed-point theorem and the general idea of the proof?}
