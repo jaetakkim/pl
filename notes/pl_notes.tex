@@ -1,6 +1,7 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amsthm,amssymb}
+\usepackage{stmaryrd}
 \usepackage{enumitem}
 \usepackage{xspace}
 \usepackage{tikz}
@@ -142,5 +143,55 @@ Because $\bot$ is the unique smallest element, we can get a chain of inclusions.
 %     \item Describe the inherent limitations of static analysis.
 %     \item How do you design sound static analyses?
 % \end{enumerate}
+
+\section{Context-Sensitive Data-Dependence Analysis via LCL-Reachability}
+\begin{enumerate}
+  \item What is the basic idea of CFL Reachability and why is it better/different than the usual static analyses methods? [CFLR]
+  
+  The idea is that this is just another framework to perform static analysis. Instead of the abstract interpretation/least-fixed-points framework, this one turns the problem into a graph reachability problem. The first step is to get to an ordinary graph reachability problem where each node in the CFG tells you the correct element of the abstract domain by considering the union of values that can be reached by the graph from (start\_main, bot). While this would get you something similar to using abstract interpretation, CFL-Reachability goes one step further and considers only paths that can be reached through paths that create words that are in a particular grammar. The example in the paper defines realizable paths, which are paths that are possible executions of the program (though it also includes non-executable ones). Thus, the analysis gives you a tighter and more precise analysis than what you might otherwise get.
+  \item How does LCL improve on CFL Reachability and how is it different?
+  \item What is data-dependence condition? Further, what is structure-transmitted data dependence? How are context-sensitivity and data-dependence represented as a CFL?
+  \item Why is the LCL-R algorithm given only an approximation alg instead of an exact one?
+  
+  Because "a precise analysis that simultaneously captures two or more well-balanced properties is undecidable" (Reps undeciability of CSDD-A)
+
+  \item What does Trellis automata have to do with anything?
+  
+  They are the automata/operational form of LCL which are more readable than the grammar version.
+
+  \item What is the motivating example?
+  \item How is LCL-Reachability defined?
+  
+  One main thing is to show the equivalence of LCL-Reachability with context-sensitive data-dependent analysis. You do this by showing that you can construct a graph in a way that LCL-reachability between two points in the program means that the concatenation of the edge labels in the path are elements from the inter-Dyck language (which in itself must correspond to context-sensitivity and data-dependence). Since LCL grammars are hard to work with, we use trellis automatons instead, and show that a certain kind of trellis automata, the GWTA $\subseteq$ STA $\subseteq$ TA, accepts the inter-Dyck language. But it turns out that constructing TA's are difficult as well as proving things about them so instead, we construct a DSTM for $\mathbb{D}_{mn}$ and then show a way to convert this DSTM into $K_{\mathbb{D}_{mn}}$.
+
+  Only after showing this construction and its correctness can we get to the actual algorithm for LCL-reachability, first shown with HTAs and then with GWTAs in particular.
+
+  \item Where does the approximation come in for LCL-reachability algorithm?
+  \item What is the main idea of the LCL-reachability algorithm?
+  \item What's the difference between HTA and GWTA?
+  
+  The reason we needed a GWTA instead of an HTA was because the constructive proof from HTA to DSTM and vice versa was wrong. To correct for this, we need to use a STA, more specifically a GWTA instead. However, this is okay as it is shown that $L(HTA) = L(STA)$ and therefore $L(DSTM) = L(HTA)$.
+
+  Likewise, the baseline LCL-reachability algorithm is based on HTAs.
+
+  \item Why use a GWTA instead of a HTA in the first place?
+  
+  The DTSM $\Rightarrow$ HTA construction in (Ibarra, Kim) was flawed because they didn't consider the fact that end-of-right-to-left (EOR) transitions are not total. For the $\mathbb{D}_{mn}$ example, the only valid states that start the left-to-right sweep again for the state at EOR transition are $q_1$ and $q_2$. This is because the states $\llparenthesis_i$ and $\llbracket_i$ at EOR indicates that no match for the right parenthesis and bracket was not found, hence the DSTM stops and rejects the string. The HTA construction did not consider this and has no mechanism to reject. Hence, what's needed is to shrink the domain set of state for the EOR representing transitions to the valid set $\{q_1, q_2\}$ instead. However, this isn't possible with HTAs, hence the need for a STA to allow for different transitions on differently labeled nodes. Since we only need two kinds of nodes, a GWTA suffices.
+
+  \item Describe a DSTM.
+  
+  It's like an oblivious TM in that it's on-line, with the additional restriction that on the left-to-right sweeps, the machine can't change states or the worktape. It consists of reading a single input character at a time when it hits the leftmost blank symbol and work is only done on the right-to-left sweep.
+
+  \item What are the additions we need to make to go from the DSTM for $D_m$ to $\mathbb{D}_{mn}$?
+  
+  Initially, I just thought that from the right-to-left sweep after reading in $\rrparenthesis_i$ would just need to ignore any $\llbracket_j$ until the first left parenthesis it hits is $\llparenthesis_i$. However, this doesn't work because the input $x=\llparenthesis_0 \llbracket_0 \rrparenthesis_0$ would be accepted as the DSTM would go into the accept state $q_2$ before hitting $\$$ and accepting. Thus, the DSTM for $\mathbb{D}_{mn}$ needs to consider the state where it clearly isn't done (there's still left brackets to process) while only ignoring the left brackets (or vice versa). This is accomplished through the states $q_1 \llparenthesis_i$ and $q_1 \llbracket_i$.
+
+  Proof of correctness follows the usual for TMs, showing that the language recognized by the TM is equivalent to $\mathbb{D}_{mn}$ in both directions.
+\end{enumerate}
+
+\begin{enumerate}
+  \item This thing about the cubic bottleneck. More about it + general explanation + pointers to resources?
+  \item You could in theory get a nonapproximate answer right by creating a DWTA for every single path from $u$ to $v$?
+\end{enumerate}
 
 \end{document}

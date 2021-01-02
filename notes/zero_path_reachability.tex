@@ -1,0 +1,117 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{stmaryrd}
+\usepackage{clrscode3e}
+\usepackage{enumitem}
+\usepackage{xspace}
+\usepackage{tikz}
+\usepackage{graphicx}
+\graphicspath{ {./imgs/} }
+\usepackage{underscore}
+% \usetikzlibrary{matrix,arrows,decorations.pathmorphing,cd}
+\setlist{
+  listparindent=\parindent,
+}
+\usepackage{pgfplots}
+\pgfplotsset{width=10cm,compat=1.9}
+\usepackage{float}
+\usepackage{polynom}
+\usepackage{hyperref}
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks%  save the current one
+  \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j%
+  \do\k\do\l\do\m\do\n\do\o\do\p\do\q\do\r\do\s\do\t%
+  \do\u\do\v\do\w\do\x\do\y\do\z\do\A\do\B\do\C\do\D%
+  \do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M\do\N%
+  \do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X%
+  \do\Y\do\Z}
+\newcommand{\qq}{\noindent\textbf{Q:} }
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+% various useful symbols defined here:
+\newcommand{\np}{\textsc{NP}\xspace}
+\newcommand{\conp}{\textsc{coNP}\xspace}
+\newcommand{\p}{\textsc{P}\xspace}
+\newcommand{\twosat}{\textsc{2-Sat}\xspace}
+\newcommand{\threesat}{\textsc{3-Sat}\xspace}
+\newcommand{\vc}{\textsc{VertexCover}\xspace}
+\newcommand{\is}{\textsc{IndependentSet}\xspace}
+\newcommand{\nphard}{\textsc{NP-hard}\xspace}
+\newcommand{\npcomplete}{\textsc{NP-complete}\xspace}
+\newsavebox{\wideeqbox}
+\newenvironment{proof-idea}{\noindent{\bf Proof Idea}\hspace*{1em}}{\qed\bigskip}
+\newenvironment{wideeq}
+  {\begin{displaymath}\begin{lrbox}{\wideeqbox}$\displaystyle}
+  {$\end{lrbox}\makebox[0pt]{\usebox{\wideeqbox}}\end{displaymath}}
+
+
+\makeatletter
+\renewcommand*\env@matrix[1][\arraystretch]{%
+  \edef\arraystretch{#1}%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{*\c@MaxMatrixCols c}}
+\makeatother
+
+\newtheorem*{theorem}{Theorem}
+
+\newtheorem*{prop}{Proposition}
+\newtheorem*{conjecture}{Conjecture}
+
+\theoremstyle{remark}
+\newtheorem*{note}{Note}
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\newenvironment{must-show}{\noindent{\bf Must Show:}\hspace*{0.5em}}{\qed\bigskip}
+
+
+\title{Zero Path Reachability}
+\author{Jae Tak Kim}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{enumerate}
+    \item It's clear that every Z-path must be of the form $k$ number of $-1$ followed by $k$ number of $+1$, where $k\in\mathbb{N}$. Thus, every Z-path of length $2k$ contains within it Z-paths of length $2,\ldots,2(k-1)$. My initial idea was to start with Z-paths of length 2 and then build them up as large as you can in the graph, sort of like Prim's algorithm for MST's. However, I couldn't get an algorithm that runs in $O(EV)$-time.
+
+    Another idea in a similar vein is to consecutively shrink the Z-paths from smallest to the largest. That is, to get every pair of consecutive $-1$ and $+1$ weight and combine them into one edge. If you have nodes $a,b,c,d,e$ and edges $(a,b), (b,c), (c,d), (d,e)$ with $w(a,b)=w(b,c)=-1$ and $w(c,d)=w(d,e)=+1$, you would first combine edges $(b,c)$ and $(c,d)$ into one edge $(b,d)$. However, you have to be sure not to remove the combined edges because there could be another Z-path if edge $(f,c)$ was in the graph with $w(f,c)=-1$, and if you removed $(c,d)$, the algorithm would incorrectly miss the Z-path from $f$ to $d$. The natural weight for the newly created edge is 0 since the weight of the path $p=b,c,d$ has weight 0. We could merely record this new edge in a separate list or adjacency matrix but since we know that this Z-path is a part of a longer Z-path, we want to use this information somehow to create a new edge $(a,e)$ of weight 0. Since we added the weights of the two edges to create $(b,d)$, we can do the same with the other edges. We can add the weights of edges $(a,b)$ and $(b,d)$ to create an edge $(a,d)$ of weight $-1+0=-1$, which would then be combined with the last remaining edge $(d,e)$.
+
+    \begin{codebox}
+    \Procname{\proc{CFGtoCNF}$(G=(N, \Sigma, R, S))$}
+    \li \Comment Step 1: Create dummy non-terminals
+    \li \For $(X\rightarrow Y) \in R$ where $len(Y) \geq 2$:
+    \Do \li \If $\exists V \in Y$ where $V\in N$:
+                \Then \li \Comment RHS should have at least one variable
+                \li \For $\sigma \in Y$ where $\sigma \in \Sigma$:
+                    \Do \li \Comment loop through terminals
+                    \li \Comment create dummy variables
+                    \li add new variable $V'$ to $N$
+                    \li add rule $(V' \rightarrow \sigma)$ to $R$
+                          \End
+          \End
+    \End
+    \li \Comment Step 2: Convert unit productions
+    \li \While $\exists (X \rightarrow Y) \in R$ where $len(Y) == 1$ and $Y[0]\in N$:
+    \Do \li \For such $(X\rightarrow Y)$:
+            \Do \li \Comment The single RHS must be a variable
+            \li $newY \gets [ ]$
+            \li \For $(X',Y') \in R$ where $X == Y[0]$:
+                \Do \li add $Y'$ to $newY$
+                \End
+            \End
+    \End
+    \li \Comment Step 3: Make all rules binary
+    \li \While $\exists (X\rightarrow Y)$ where $len(Y) > 2$:
+    \Do \li \For such $(X\rightarrow Y)$:
+            \Do \li \Comment Arbitrarily replace the first two variables
+            \li Replace $Y[0:2]$ with new variable $V'$
+            \li Add rule $(V'\rightarrow Y[0:2])$ to $R$
+            \End
+    \End
+    \end{codebox}
+\end{enumerate}
+
+\end{document}
