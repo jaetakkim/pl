@@ -176,4 +176,34 @@ There is a path that is potentially non-persistent from every write to the last 
     \includegraphics[scale=0.6]{libpmemobj-tx}
 \end{figure}
 
+
+\newpage
+\section{Enforcing Persist Ordering}
+\subsection{PMTest Liu et al.}
+Here are the relevant PMTest operations copied from the paper:
+\begin{itemize}
+    \item \texttt{global_timestamp} \textbf{(global status):} A global epoch counter that is incremented on every \texttt{sfence} encountered in the trace.
+    \item \texttt{persist_interval} \textbf{(local status):} The interval in which certain memory location(s) may persist.
+    \item \texttt{flush_interval} \textbf{(local status):} The interval in which certain memory location(s) may be explicitly written back to PM.
+    \item \texttt{write(addr,size)} modifies an address range of [addr, addr+size) in the shadow memory. It first clears existing \texttt{persist_intervals} and \texttt{flush_intervals} within the address range and sets the \texttt{persist_intervals} as (\texttt{global_timestamp}, \(\infty\)). That is, this write may persist at any time moving forward.
+    \item \texttt{clwb(addr,size)} writes back an address range of [adddr,addr+size) and the \texttt{flush_interval} is set as (\texttt{global_timestamp},\(\infty\)). That is, a writeback for these addresses has been issued and it may happen at any time moving forward. If there is an existing \texttt{flush_interval}, PMTest raises a \texttt{WARNING}.
+    \item \texttt{sfence} enforces the ordering of prior \texttt{write} and \texttt{clwb} operations. First, it increments the \texttt{global_timestamp}. Second, it updates the \texttt{flush_interval} of prior \texttt{clwb}s so that the intervals end at the current \texttt{global_timestamp}, i.e, the writeback is complete. Third, it updates the \texttt{persist_interval} of prior \texttt{clwb}s so that the intervals end at the current \texttt{global_timestamp}, i.e, the write persisted.
+    \item \texttt{isOrderedBefore(addrA,sizeA,addrB,sizeB)} checks whether \textit{all} writes to [addrA,addrA+sizeA) can persist before any write to [addrB,addrB+sizeB) by checking if any of the \texttt{persist_intervals} in [addrB,addrB+sizeB) overlap with any of those in [addrA,addrA+sizeA).
+\end{itemize}
+
+The checking rule \texttt{isOrderedBefore}\((A,B)\) checks if the persist intervals of \(A\) and \(B\) overlap. The start of PI's are only set by a \texttt{write} to the address and it is set to the current \texttt{global_timestamp}. The end of a PI is only changed by an \texttt{sfence} operation where it is set to \texttt{global_timestamp} if there was a previous \texttt{clwb} operation to the same address. Because \texttt{global_timestamp} is incremented only by an \texttt{sfence} operation and is never decremented, this implies that there \textit{\textbf{must}} be a \texttt{sfence} before the last write to \(B\) (the write that is being checked for persist ordering).
+
+Suppose that there isn't a \texttt{sfence} between \texttt{write}\((A)\) and \texttt{write}\((B)\) but that an \texttt{sfence} occurs after both writes. Let \(\left( a_1, a_2 \right)\) be the PI for \(A\) and let \((b_1, b_2)\) be the PI for \(B\). The intervals overlap if \(b_1 < a_2\). At this \texttt{sfence} call, the first thing that occurs is that \texttt{global_timestamp} is incremented. Then \(a_2\) is set to this new \texttt{global_timestamp}, assuming that a \texttt{clwb}\((A)\) exists before the \texttt{sfence} (if this wasn't the case, \(a_2\) would never be changed from \(\infty\) so \(b_1 < a_2\) always). But note that this \(a_2\) must be strictly greater than \(b_1\) because \(b_1\) was set by some previous \texttt{global_timestamp} and the \texttt{sfence} operation just incremented \texttt{global_timestamp}. So unless \(b_1\) is over-written by another \texttt{write}\((B)\), \(b_1 < a_2\) and the intervals overlap.
+
+% Furthermore, \texttt{sfence} only updates the end of a PI for addresses that have a \texttt{clwb} to them, so there must also be a \texttt{clwb}\((A)\) before the previously mentioned \texttt{sfence}.
+
+\begin{note}
+So it might just be that everything is simple as long as you don't consider rewrites. Well actually, it might be that there are multiple PI inside a single range of addresses. I'm thinking of arrays. There's also performance ``bugs'' that PMTest checks for.
+\end{note}
+
+Maybe also think about interprocedural and weird functions and loops and threads and other things like that that could mess things up. Also, note that PMTest only works for a particular execution whereas static program analysis will probably be flow-insensitive. How does the interaction of multiple \texttt{clwb} within the same address range interact with a single overall write? What's the point of maintaining \texttt{flush_interval}?
+
+
+\subsection{Operational Semantics}
+
 \end{document}
